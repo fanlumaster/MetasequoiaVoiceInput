@@ -3,13 +3,14 @@
 
 #include <deque>
 
-class VadSegmenter {
-public:
-    bool process(const float* samples, size_t count);
+class VadSegmenter
+{
+  public:
+    bool process(const float *samples, size_t count);
     bool should_flush() const;
     std::vector<float> take_audio();
 
-private:
+  private:
     std::vector<float> buffer_;
     std::deque<float> pre_roll_buffer_;
     float silence_ms_ = 0.0f;

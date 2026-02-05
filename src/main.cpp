@@ -17,7 +17,7 @@ int main()
 {
     AudioCapture audio;
     VadSegmenter vad;
-    WhisperWorker whisper("C:\\Users\\sonnycalcr\\EDisk\\CppCodes\\IMECodes\\MetasequoiaVoiceInput\\build\\bin\\Debug\\models\\ggml-small.bin");
+    WhisperWorker whisper("C:\\Users\\sonnycalcr\\EDisk\\CppCodes\\IMECodes\\MetasequoiaVoiceInput\\build\\bin\\Debug\\models\\ggml-large-v3.bin");
 
     audio.start([&](const float *data, size_t count) {
         vad.process(data, count);
