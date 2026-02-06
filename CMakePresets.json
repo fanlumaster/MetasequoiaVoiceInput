@@ -10,6 +10,7 @@
       },
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "C:/Users/SonnyCalcr/scoop/apps/vcpkg/current/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-ort-static",
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
@@ -22,6 +23,7 @@
       },
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "C:/Users/SonnyCalcr/scoop/apps/vcpkg/current/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-ort-static",
         "CMAKE_BUILD_TYPE": "Release"
       }
     }
