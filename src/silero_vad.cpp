@@ -4,7 +4,6 @@
 #include <array>
 #include <stdexcept>
 #include <cstring>
-#include <iostream>
 #include <mutex>
 #include <windows.h>
 #include <fmt/xchar.h>
@@ -37,11 +36,11 @@ struct SileroVad::Impl
             opts.SetIntraOpNumThreads(1);
             opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
 
-            printf("[VAD] Loading session from path...\n");
-            fflush(stdout);
+            // printf("[VAD] Loading session from path...\n");
+            // fflush(stdout);
             session = Ort::Session(env, model_path.c_str(), opts);
-            printf("[VAD] Session created successfully.\n");
-            fflush(stdout);
+            // printf("[VAD] Session created successfully.\n");
+            // fflush(stdout);
 
             state.assign(2 * 1 * 128, 0.0f);
             context.assign(64, 0.0f);
@@ -70,8 +69,8 @@ struct SileroVad::Impl
         }
         catch (const std::exception &e)
         {
-            printf("[VAD] Error: %s\n", e.what());
-            fflush(stdout);
+            // printf("[VAD] Error: %s\n", e.what());
+            // fflush(stdout);
             throw;
         }
     }
@@ -173,8 +172,8 @@ void SileroVad::process_frame(const float *frame_samples)
             if (speech_count_ >= cfg_.start_frames)
             {
                 state_ = State::Speech;
-                printf("[VAD] Transition to SPEECH\n");
-                fflush(stdout);
+                // printf("[VAD] Transition to SPEECH\n");
+                // fflush(stdout);
             }
         }
         else if (state_ == State::Speech)
@@ -184,8 +183,8 @@ void SileroVad::process_frame(const float *frame_samples)
             if (silence_count_ >= cfg_.end_frames)
             {
                 state_ = State::Silence;
-                printf("[VAD] Transition to SILENCE\n");
-                fflush(stdout);
+                // printf("[VAD] Transition to SILENCE\n");
+                // fflush(stdout);
                 speech_count_ = 0;
                 silence_count_ = 0;
 
@@ -201,8 +200,8 @@ void SileroVad::process_frame(const float *frame_samples)
                     seg.samples = std::move(current_segment_);
                     seg.sample_rate = cfg_.sample_rate;
                     ready_segments_.push_back(std::move(seg));
-                    printf("[VAD] Finalized segment (%zu samples)\n", seg.samples.size());
-                    fflush(stdout);
+                    // printf("[VAD] Finalized segment (%zu samples)\n", seg.samples.size());
+                    // fflush(stdout);
                 }
                 current_segment_.clear();
                 reset_state();
@@ -295,8 +294,8 @@ float SileroVad::infer_prob(const float *frame_samples)
         static int count = 0;
         if (count++ % 20 == 0 || prob > 0.01f || rms > 0.05f)
         {
-            printf("[VAD] RMS: %.4f | Prob: %.6f | StateD: %.8f\n", rms, prob, diff);
-            fflush(stdout);
+            // printf("[VAD] RMS: %.4f | Prob: %.6f | StateD: %.8f\n", rms, prob, diff);
+            // fflush(stdout);
         }
 
         return prob;

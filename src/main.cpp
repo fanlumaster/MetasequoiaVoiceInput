@@ -23,8 +23,12 @@ std::wstring utf8_to_wstring(const std::string &str)
 int main()
 {
     // 禁用 stdout
-    freopen("nul", "w", stdout);
-    freopen("nul", "w", stderr);
+    // freopen("nul", "w", stdout);
+    // freopen("nul", "w", stderr);
+    // Set console code page to UTF-8 so console can display UTF-8 characters correctly
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     printf("--- METASEQUOIA VOICE INPUT START ---\n");
     fflush(stdout);
 
@@ -55,24 +59,18 @@ int main()
                     printf("[VAD] Main thread popping segment (%zu samples)\n", segment.samples.size());
                     fflush(stdout);
 
-                    // auto text = whisper.recognize(segment.samples);
-                    std::string text = "test";
+                    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+                    auto text = whisper.recognize(segment.samples);
+                    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> elapsed = end - start;
+                    std::cout << "[WHISPER] Time: " << elapsed.count() << " seconds" << std::endl;
+                    fflush(stdout);
                     if (!text.empty())
                     {
                         printf("[WHISPER] Recognized: %s\n", text.c_str());
-                        printf("[WHISPER] Raw Bytes: ");
-                        for (unsigned char c : text)
-                            printf("%02X ", c);
-                        printf("\n");
                         fflush(stdout);
 
                         std::wstring wtext = utf8_to_wstring(text);
-                        printf("[MAIN] Converted WString (%zu chars): ", wtext.size());
-                        for (wchar_t wc : wtext)
-                            printf("%04X ", (unsigned int)wc);
-                        printf("\n");
-                        fflush(stdout);
-
                         send_text(wtext);
                     }
                 }
