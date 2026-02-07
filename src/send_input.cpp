@@ -1,9 +1,6 @@
 #include "send_input.h"
 #include <windows.h>
-
 #include <cstdio>
-#include <thread>
-#include <chrono>
 
 void send_text(const std::wstring &text)
 {
