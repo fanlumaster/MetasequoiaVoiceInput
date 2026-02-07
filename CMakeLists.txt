@@ -19,6 +19,8 @@ endif()
 # Dependencies
 find_package(onnxruntime CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # whisper.cpp
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "whisper: build examples" FORCE)
@@ -35,15 +37,21 @@ include_directories(third_party/miniaudio)
 set(SOURCE_FILES
     "src/audio_capture.cpp"
     "src/audio_capture.h"
-    "src/silero_vad.cpp"
-    "src/silero_vad.h"
-    "src/whisper_worker.cpp"
-    "src/whisper_worker.h"
+    "src/cloud_stt_worker.cpp"
+    "src/cloud_stt_worker.h"
+    "src/main.cpp"
+    "src/mvi_utils.cpp"
+    "src/mvi_utils.h"
     "src/send_input.cpp"
     "src/send_input.h"
-    "src/main.cpp"
+    "src/silero_vad.cpp"
+    "src/silero_vad.h"
+    "src/stt_service.h"
     "src/vad.cpp"
     "src/vad.h"
+    "src/wav_writer.h"
+    "src/whisper_worker.cpp"
+    "src/whisper_worker.h"
 )
 
 set(MY_EXECUTABLE_NAME "MetasequoiaVoiceInput")
@@ -55,6 +63,8 @@ target_link_libraries(${MY_EXECUTABLE_NAME}
     whisper
     fmt::fmt
     onnxruntime::onnxruntime
+    CURL::libcurl
+    nlohmann_json::nlohmann_json
     User32
 )
 

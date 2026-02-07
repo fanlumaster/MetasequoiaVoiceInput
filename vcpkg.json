@@ -1,6 +1,8 @@
 {
   "dependencies": [
     "fmt",
-    "onnxruntime"
+    "onnxruntime",
+    "curl",
+    "nlohmann-json"
   ]
 }
