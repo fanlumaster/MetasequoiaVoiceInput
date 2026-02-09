@@ -32,3 +32,31 @@ std::string mvi_utils::retrive_token()
     }
     return cloud_token;
 }
+
+std::wstring mvi_utils::get_vad_model_path()
+{
+    std::string vad_model_path;
+    char *buf = nullptr;
+    size_t sz = 0;
+    // Use _dupenv_s instead of getenv to avoid C4996 warning and ensure thread safety
+    if (_dupenv_s(&buf, &sz, "LOCALAPPDATA") == 0 && buf != nullptr)
+    {
+        vad_model_path = std::string(buf) + "\\MetasequoiaVoiceInput\\models\\silero_vad.onnx";
+        free(buf);
+    }
+    return utf8_to_wstring(vad_model_path);
+}
+
+std::string mvi_utils::get_ggml_model_path()
+{
+    std::string ggml_model_path;
+    char *buf = nullptr;
+    size_t sz = 0;
+    // Use _dupenv_s instead of getenv to avoid C4996 warning and ensure thread safety
+    if (_dupenv_s(&buf, &sz, "LOCALAPPDATA") == 0 && buf != nullptr)
+    {
+        ggml_model_path = std::string(buf) + "\\MetasequoiaVoiceInput\\models\\ggml-small.bin";
+        free(buf);
+    }
+    return ggml_model_path;
+}

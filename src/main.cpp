@@ -24,12 +24,20 @@ std::string g_cloud_token;
 
 int main()
 {
+    // g_stt_provider = SttProvider::LocalWhisper;
+
     // Set console code page to UTF-8 so console can display UTF-8 characters correctly
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
     // Set up token
     g_cloud_token = mvi_utils::retrive_token();
+
+    // silero_vad.onnx path
+    std::wstring vad_model_path = mvi_utils::get_vad_model_path();
+
+    // ggml model path
+    std::string ggml_model_path = mvi_utils::get_ggml_model_path();
 
     printf("--- METASEQUOIA VOICE INPUT START ---\n");
     fflush(stdout);
@@ -38,7 +46,7 @@ int main()
     {
         printf("[INIT] Loading Silero VAD...\n");
         fflush(stdout);
-        SileroVad vad(L"C:\\Users\\sonnycalcr\\EDisk\\CppCodes\\IMECodes\\MetasequoiaVoiceInput\\build\\bin\\Debug\\models\\silero_vad.onnx");
+        SileroVad vad(vad_model_path);
         printf("[INIT] VAD Loaded.\n");
         fflush(stdout);
 
@@ -47,7 +55,7 @@ int main()
         if (g_stt_provider == SttProvider::LocalWhisper)
         {
             printf("[INIT] Loading Local Whisper model...\n");
-            stt = std::make_unique<WhisperWorker>("C:\\Users\\sonnycalcr\\EDisk\\CppCodes\\IMECodes\\MetasequoiaVoiceInput\\build\\bin\\Debug\\models\\ggml-small.bin");
+            stt = std::make_unique<WhisperWorker>(ggml_model_path.c_str());
             printf("[INIT] Local Whisper Loaded.\n");
         }
         else if (g_stt_provider == SttProvider::CloudSiliconFlow)
