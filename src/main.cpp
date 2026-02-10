@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-#include <vector>
 #include <cstdio>
 #include <memory>
 #include "silero_vad.h"
@@ -69,6 +68,43 @@ int main()
         printf("[INIT] Initializing Audio...\n");
         fflush(stdout);
         AudioCapture audio;
+        //
+        // STT queue + thread, 把耗时的操作放在这个线程里，避免在 audio callback 里做耗时操作导致丢音频
+        //
+        std::mutex stt_mutex;
+        std::condition_variable stt_cv;
+        std::deque<SpeechSegment> stt_queue;
+        std::atomic<bool> stt_stop = false;
+        std::thread stt_thread([&]() {
+            while (!stt_stop)
+            {
+                SpeechSegment seg;
+
+                {
+                    std::unique_lock<std::mutex> lock(stt_mutex);
+                    stt_cv.wait(lock, [&]() { return stt_stop || !stt_queue.empty(); });
+
+                    if (stt_stop)
+                        break;
+
+                    seg = std::move(stt_queue.front());
+                    stt_queue.pop_front();
+                }
+
+                // 只有这里才允许慢操作
+                auto start = std::chrono::steady_clock::now();
+                std::string text = stt->recognize(seg.samples);
+                auto end = std::chrono::steady_clock::now();
+                std::cout << "[STT] Time: " << std::chrono::duration<double>(end - start).count() << "s\n";
+                if (!text.empty())
+                {
+                    printf("[STT] Recognized: %s\n", text.c_str());
+                    fflush(stdout);
+                    send_text(mvi_utils::utf8_to_wstring(text));
+                }
+            }
+        });
+
         audio.start([&](const float *data, size_t count) {
             try
             {
@@ -76,23 +112,11 @@ int main()
                 while (vad.has_segment())
                 {
                     auto segment = vad.pop_segment();
-                    printf("[VAD] Main thread popping segment (%zu samples)\n", segment.samples.size());
-                    fflush(stdout);
-
-                    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-                    std::string text = stt->recognize(segment.samples);
-                    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                    std::chrono::duration<double> elapsed = end - start;
-                    std::cout << "[STT] Time: " << elapsed.count() << " seconds" << std::endl;
-                    fflush(stdout);
-                    if (!text.empty())
                     {
-                        printf("[STT] Recognized: %s\n", text.c_str());
-                        fflush(stdout);
-
-                        std::wstring wtext = mvi_utils::utf8_to_wstring(text);
-                        send_text(wtext);
+                        std::lock_guard<std::mutex> lock(stt_mutex);
+                        stt_queue.push_back(std::move(segment));
                     }
+                    stt_cv.notify_one();
                 }
             }
             catch (const std::exception &e)
@@ -114,6 +138,13 @@ int main()
         printf("Stopping...\n");
         fflush(stdout);
         audio.stop();
+        // 通知 stt 线程停止
+        stt_stop = true;
+        stt_cv.notify_one();
+        if (stt_thread.joinable())
+        {
+            stt_thread.join();
+        }
         printf("Stopped.\n");
         fflush(stdout);
     }
