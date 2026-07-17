@@ -12,9 +12,8 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
-#include "silero_vad.h"
+#include "vad.h"
 #include "audio_capture.h"
-#include "whisper_worker.h"
 #include "cloud_stt_worker.h"
 #include "send_input.h"
 #include "mvi_utils.h"
@@ -27,14 +26,6 @@
 #include <fmt/xchar.h>
 #include <windows.h>
 
-// Configuration
-enum class SttProvider
-{
-    LocalWhisper,
-    CloudSiliconFlow
-};
-
-SttProvider g_stt_provider = SttProvider::CloudSiliconFlow; // Default to Cloud for testing
 std::string g_cloud_token;
 std::string g_language = "zh-cn";
 bool g_polish_text = false;
@@ -223,58 +214,20 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
-    // Set up stt provider from config
-    const std::string stt_provider_str = mvi_config::GetSTTProvider();
-    if (stt_provider_str == "local_whisper")
-    {
-        g_stt_provider = SttProvider::LocalWhisper;
-    }
-    else if (stt_provider_str == "cloud_siliconflow")
-    {
-        g_stt_provider = SttProvider::CloudSiliconFlow;
-    }
-    else
-    {
-        g_stt_provider = SttProvider::CloudSiliconFlow;
-    }
-
     // Set up token
     g_cloud_token = mvi_utils::retrive_token();
     g_language = mvi_config::GetLanguage();
     g_polish_text = mvi_config::GetPolishTextEnabled();
-
-    // silero_vad.onnx path
-    std::wstring vad_model_path = mvi_utils::get_vad_model_path();
-
-    // ggml model path
-    std::string ggml_model_path = mvi_utils::get_ggml_model_path();
 
     printf("--- METASEQUOIA VOICE INPUT START ---\n");
     fflush(stdout);
 
     try
     {
-        printf("[INIT] Loading Silero VAD...\n");
-        fflush(stdout);
-        SileroVad vad(vad_model_path);
-        printf("[INIT] VAD Loaded.\n");
-        fflush(stdout);
-
-        std::unique_ptr<SttService> stt;
+        VadSegmenter vad;
+        std::unique_ptr<SttService> stt = std::make_unique<CloudSttWorker>(g_cloud_token);
         std::unique_ptr<TextPolisher> text_polisher;
-
-        if (g_stt_provider == SttProvider::LocalWhisper)
-        {
-            printf("[INIT] Loading Local Whisper model...\n");
-            stt = std::make_unique<WhisperWorker>(ggml_model_path.c_str());
-            printf("[INIT] Local Whisper Loaded.\n");
-        }
-        else if (g_stt_provider == SttProvider::CloudSiliconFlow)
-        {
-            printf("[INIT] Initializing Cloud STT (SiliconFlow)...\n");
-            stt = std::make_unique<CloudSttWorker>(g_cloud_token);
-            printf("[INIT] Cloud STT Ready.\n");
-        }
+        printf("[INIT] Cloud STT Ready.\n");
 
         if (g_polish_text)
         {
@@ -300,14 +253,14 @@ int main()
         //
         std::mutex stt_mutex;
         std::condition_variable stt_cv;
-        std::deque<SpeechSegment> stt_queue;
+        std::deque<std::vector<float>> stt_queue;
         std::atomic<bool> stt_stop = false;
         std::mutex record_mutex;
         std::vector<float> recorded_samples;
         std::thread stt_thread([&]() {
             while (!stt_stop)
             {
-                SpeechSegment seg;
+                std::vector<float> samples;
 
                 {
                     std::unique_lock<std::mutex> lock(stt_mutex);
@@ -316,13 +269,13 @@ int main()
                     if (stt_stop)
                         break;
 
-                    seg = std::move(stt_queue.front());
+                    samples = std::move(stt_queue.front());
                     stt_queue.pop_front();
                 }
 
                 // 只有这里才允许慢操作
                 auto start = std::chrono::steady_clock::now();
-                std::string text = stt->recognize(seg.samples);
+                std::string text = stt->recognize(samples);
                 auto end = std::chrono::steady_clock::now();
                 std::cout << "[STT] Time: " << std::chrono::duration<double>(end - start).count() << "s\n";
                 if (!text.empty())
@@ -354,13 +307,13 @@ int main()
                 const float rms = count > 0 ? static_cast<float>(std::sqrt(sum_sq / static_cast<double>(count))) : 0.0f;
                 wave_overlay.set_input_level(std::min(1.0f, rms * 8.0f));
 
-                vad.push_audio(data, count);
-                while (vad.has_segment())
+                vad.process(data, count);
+                if (vad.should_flush())
                 {
-                    auto segment = vad.pop_segment();
+                    auto samples = vad.take_audio();
                     {
                         std::lock_guard<std::mutex> lock(stt_mutex);
-                        stt_queue.push_back(std::move(segment));
+                        stt_queue.push_back(std::move(samples));
                     }
                     stt_cv.notify_one();
                 }
@@ -495,6 +448,15 @@ int main()
                     wave_overlay.set_input_level(0.0f);
                     wave_overlay.hide();
                     cue_player.play_end();
+                    auto samples = vad.take_audio();
+                    if (!samples.empty())
+                    {
+                        {
+                            std::lock_guard<std::mutex> lock(stt_mutex);
+                            stt_queue.push_back(std::move(samples));
+                        }
+                        stt_cv.notify_one();
+                    }
                     printf("[AUDIO] Stopped (Ctrl+F9 toggle mode).\n");
                     fflush(stdout);
                 }
@@ -576,11 +538,10 @@ int main()
                 }
                 fflush(stdout);
 
-                SpeechSegment segment;
-                segment.sample_rate = k_sample_rate;
+                std::vector<float> samples;
                 {
                     std::lock_guard<std::mutex> lock(record_mutex);
-                    segment.samples = std::move(recorded_samples);
+                    samples = std::move(recorded_samples);
                     recorded_samples.clear();
                 }
 
@@ -588,18 +549,18 @@ int main()
                 const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
                 const size_t min_samples = static_cast<size_t>((k_sample_rate * k_ralt_min_record_ms) / 1000);
 
-                if (elapsed_ms < k_ralt_min_record_ms || segment.samples.size() < min_samples)
+                if (elapsed_ms < k_ralt_min_record_ms || samples.size() < min_samples)
                 {
-                    printf("[AUDIO] Ignored short RAlt recording (%lldms, %zu samples).\n", elapsed_ms, segment.samples.size());
+                    printf("[AUDIO] Ignored short RAlt recording (%lldms, %zu samples).\n", elapsed_ms, samples.size());
                     fflush(stdout);
                     break;
                 }
 
-                if (!segment.samples.empty())
+                if (!samples.empty())
                 {
                     {
                         std::lock_guard<std::mutex> lock(stt_mutex);
-                        stt_queue.push_back(std::move(segment));
+                        stt_queue.push_back(std::move(samples));
                     }
                     stt_cv.notify_one();
                 }

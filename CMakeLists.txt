@@ -17,21 +17,10 @@ if(MSVC)
 endif()
 
 # Dependencies
-find_package(onnxruntime CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
-
-# whisper.cpp
-set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "whisper: build examples" FORCE)
-set(WHISPER_BUILD_TESTS OFF CACHE BOOL "whisper: build tests" FORCE)
-set(WHISPER_BUILD_SERVER OFF CACHE BOOL "whisper: build server example" FORCE)
-set(WHISPER_USE_ONNX OFF CACHE BOOL "" FORCE)
-set(WHISPER_USE_ONNXRT OFF CACHE BOOL "" FORCE)
-# set(GGML_VULKAN ON CACHE BOOL "" FORCE)
-set(GGML_NATIVE ON CACHE BOOL "" FORCE)
-add_subdirectory(third_party/whisper.cpp)
 
 # miniaudio
 include_directories(third_party/miniaudio)
@@ -53,8 +42,6 @@ set(SOURCE_FILES
     "src/mvi_utils.h"
     "src/send_input.cpp"
     "src/send_input.h"
-    "src/silero_vad.cpp"
-    "src/silero_vad.h"
     "src/stt_service.h"
     "src/text_polisher.cpp"
     "src/text_polisher.h"
@@ -63,8 +50,6 @@ set(SOURCE_FILES
     "src/wave_overlay.cpp"
     "src/wave_overlay.h"
     "src/wav_writer.h"
-    "src/whisper_worker.cpp"
-    "src/whisper_worker.h"
     "src/window_webview2.cpp"
     "src/window_webview2.h"
 )
@@ -84,9 +69,7 @@ endif()
 # Link libraries
 target_link_libraries(${MY_EXECUTABLE_NAME}
     PRIVATE
-    whisper
     fmt::fmt
-    onnxruntime::onnxruntime
     CURL::libcurl
     nlohmann_json::nlohmann_json
     tomlplusplus::tomlplusplus
@@ -99,7 +82,6 @@ target_link_libraries(${MY_EXECUTABLE_NAME}
 target_include_directories(${MY_EXECUTABLE_NAME}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/miniaudio
     ${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/include
 )
