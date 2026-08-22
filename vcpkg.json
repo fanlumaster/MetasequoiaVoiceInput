@@ -1,7 +1,6 @@
 {
   "dependencies": [
     "fmt",
-    "onnxruntime",
     "curl",
     "nlohmann-json",
     "tomlplusplus",
