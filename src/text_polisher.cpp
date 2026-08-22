@@ -6,6 +6,8 @@
 
 namespace
 {
+constexpr long kPolishTimeoutMs = 3000L;
+
 void EnsureCurlInitialized()
 {
     static std::once_flag once;
@@ -69,7 +71,9 @@ std::string TextPolisher::polish(const std::string &original_text) const
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload_str.size());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    // Polishing is optional. Abort after three seconds so the original ASR text
+    // can be sent immediately by the caller.
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, kPolishTimeoutMs);
 
     const CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
