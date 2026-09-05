@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-This is a voice input module for [MetasequoiaImeTsf](https://github.com/metasequoiaime/MetasequoiaImeTsf). However, it can be used as a standalone voice input tool for any application without other MetasequoiaIME components.
+This is a voice input module for [MSIME-Windows](https://github.com/metasequoiaime/MSIME-Windows). However, it can be used as a standalone voice input tool for any application without other MetasequoiaIME components.
 
 ## How to run
 

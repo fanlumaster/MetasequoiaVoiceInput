@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-水杉记言是一款语音输入模块，最初为 [MetasequoiaImeTsf](https://github.com/metasequoiaime/MetasequoiaImeTsf) 设计，但也可以**独立运行**，作为通用语音输入工具用于任何应用程序，而无需安装其他输入法组件。
+水杉记言是一款语音输入模块，最初为 [MSIME-Windows](https://github.com/metasequoiaime/MSIME-Windows) 设计，但也可以**独立运行**，作为通用语音输入工具用于任何应用程序，而无需安装其他输入法组件。
 
 ---
 
